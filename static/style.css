@@ -1,0 +1,195 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+  color: white;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  overflow: hidden;
+  position: relative;
+  background: #000;
+}
+
+/* Контейнер для анимированных элементов */
+.background-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  overflow: hidden;
+}
+
+/* Анимированные круги */
+.animated-circle {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0;
+  transition: all 1s ease-in-out;
+}
+
+.container {
+  background: rgba(0, 0, 0, 0.4);
+  padding: 40px;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 500px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  text-align: center;
+  backdrop-filter: blur(10px);
+  position: relative;
+  z-index: 1;
+}
+
+h1 {
+  margin-bottom: 20px;
+  font-size: 2rem;
+}
+
+input {
+  width: 100%;
+  padding: 14px;
+  border-radius: 8px;
+  border: none;
+  margin-bottom: 20px;
+  font-size: 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+input::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Выбор типа скачивания */
+.download-type {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  justify-content: center;
+}
+
+.type-btn {
+  flex: 1;
+  padding: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  background: transparent;
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.type-btn.active {
+  background: rgba(255, 51, 102, 0.3);
+  border-color: #ff3366;
+}
+
+.type-btn:hover {
+  background: rgba(255, 51, 102, 0.2);
+}
+
+/* Выбор качества */
+.quality-selector {
+  margin-bottom: 20px;
+}
+
+.quality-selector select {
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 1rem;
+}
+
+.quality-selector select option {
+  background: #333;
+  color: white;
+}
+
+button {
+  background: linear-gradient(45deg, #ff3366, #ff6b9d);
+  color: white;
+  border: none;
+  padding: 14px 20px;
+  font-size: 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 600;
+  width: 100%;
+}
+
+.result {
+  margin-top: 20px;
+  font-size: 1rem;
+  min-height: 30px;
+}
+
+.loader {
+  display: none;
+  width: 30px;
+  height: 30px;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top: 4px solid #fff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 20px auto;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .container {
+    padding: 20px;
+    margin: 10px;
+  }
+  
+  h1 {
+    font-size: 1.5rem;
+  }
+  
+  .download-type {
+    flex-direction: column;
+    gap: 5px;
+  }
+  
+  input, button, .quality-selector select {
+    font-size: 0.9rem;
+    padding: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  body {
+    padding: 10px;
+  }
+  
+  .container {
+    padding: 15px;
+  }
+  
+  h1 {
+    font-size: 1.3rem;
+  }
+  
+  input, button, .quality-selector select {
+    font-size: 0.8rem;
+    padding: 10px;
+  }
+}

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Скачать видео с YouTube</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <h1>📥 Скачать видео с YouTube</h1>
+    
+    <input type="text" id="videoUrl" placeholder="Вставьте ссылку на видео YouTube">
+    
+    <!-- Выбор типа скачивания -->
+    <div class="download-type">
+      <button class="type-btn active" data-type="video">Видео</button>
+      <button class="type-btn" data-type="audio">Аудио</button>
+    </div>
+    
+    <!-- Выбор качества -->
+    <div class="quality-selector">
+      <select id="quality">
+        <option value="best">Лучшее качество (до 1080p)</option>
+        <option value="hd">HD качество (до 720p)</option>
+        <option value="sd">SD качество (до 480p)</option>
+      </select>
+    </div>
+    
+    <button onclick="downloadVideo()">Скачать</button>
+    
+    <div class="loader" id="loader"></div>
+    <div class="result" id="result"></div>
+  </div>
+
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
