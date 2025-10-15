@@ -184,17 +184,23 @@ function setDownloadType(type) {
 
 // Функция скачивания видео
 async function downloadVideo() {
-    const url = document.getElementById('videoUrl').value.trim();
+    const urlInput = document.getElementById('videoUrl');
+    const qualitySelect = document.getElementById('quality');
     const resultDiv = document.getElementById('result');
     const loader = document.getElementById('loader');
+
+    const url = urlInput.value.trim();
 
     if (!url) {
         resultDiv.textContent = "⚠️ Введите ссылку";
         return;
     }
 
+    // Получаем выбранное качество (по умолчанию 720)
+    const quality = qualitySelect?.value || '720';
+
     resultDiv.textContent = "";
-    loader.style.display = "block"; // Показываем анимацию загрузки
+    loader.style.display = "block";
 
     try {
         const response = await fetch('/download', {
@@ -204,39 +210,41 @@ async function downloadVideo() {
             },
             body: JSON.stringify({ 
                 url: url,
-                type: downloadType
+                type: downloadType,
+                quality: quality  // Передаём качество как строку: "1080", "720", "480"
             })
         });
 
-        // Проверяем статус ответа
         if (response.ok) {
-            // Если всё хорошо, считаем, что файл скачан
+            // Браузер автоматически начнёт скачивание
             resultDiv.innerHTML = `<span class="success">✅ Файл успешно скачан!</span>`;
-            loader.style.display = "none"; // Скрываем анимацию загрузки
+            loader.style.display = "none";
         } else {
-            // Если ошибка, показываем сообщение
             const data = await response.json();
             resultDiv.textContent = `❌ Ошибка: ${data.error}`;
-            loader.style.display = "none"; // Скрываем анимацию загрузки
+            loader.style.display = "none";
         }
     } catch (error) {
-        loader.style.display = "none"; // Скрываем анимацию загрузки
-        console.error("Ошибка:", error);
-        resultDiv.textContent = `⚠️ Произошла ошибка. Попробуйте другое видео.`;
+        console.error("Ошибка при скачивании:", error);
+        resultDiv.textContent = "⚠️ Произошла ошибка. Попробуйте другое видео.";
+        loader.style.display = "none";
     }
 }
 
-// Инициализируем анимированный фон при загрузке страницы
+// Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', () => {
     createAnimatedBackground();
     
-    // Устанавливаем обработчики событий для кнопок типа скачивания
+    // Устанавливаем обработчики для кнопок типа
     document.querySelectorAll('.type-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             setDownloadType(btn.dataset.type);
         });
     });
     
-    // Устанавливаем обработчик для кнопки скачивания
-    document.querySelector('button').addEventListener('click', downloadVideo);
+    // Обработчик кнопки скачивания
+    const downloadBtn = document.querySelector('button');
+    if (downloadBtn) {
+        downloadBtn.addEventListener('click', downloadVideo);
+    }
 });
