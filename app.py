@@ -1,31 +1,45 @@
 from flask import Flask, render_template, request, jsonify, send_file
 import yt_dlp
 import os
-from flask_cors import CORS
-import logging
+import tempfile
+import shutil
+from urllib.parse import urlparse
 import re
+import logging
 
+# Настройка логирования
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+# CORS включён для удобства разработки (можно отключить в продакшене)
+from flask_cors import CORS
 CORS(app)
 
-# Для публичного сервера используем системную папку загрузок
-DOWNLOAD_FOLDER = os.path.join(os.path.expanduser("~"), "Downloads")
-os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
+# Разрешённые домены (можно расширить при необходимости)
+ALLOWED_DOMAINS = {
+    'youtube.com', 'youtu.be',
+    'rutube.ru', 'rutube.com',
+    'vk.com', 'vimeo.com',
+    'dailymotion.com', 'soundcloud.com',
+    'twitch.tv', 'instagram.com', 'facebook.com'
+}
+
+def is_allowed_url(url):
+    """Проверяет, разрешён ли домен в URL."""
+    try:
+        domain = urlparse(url).netloc.lower()
+        return any(allowed in domain for allowed in ALLOWED_DOMAINS)
+    except Exception:
+        return False
 
 def sanitize_filename(filename):
-    # Удаляем недопустимые символы
+    """Удаляет недопустимые символы и ограничивает длину имени файла."""
     filename = re.sub(r'[<>:"/\\|?*]', '', filename)
-    
-    # Ограничиваем длину имени файла
-    max_length = 255  # Максимальная длина имени файла в Windows
+    max_length = 255
     if len(filename) > max_length:
-        # Обрезаем слишком длинное имя файла
         filename = filename[:max_length]
-    
-    return filename
+    return filename.strip()
 
 @app.route('/')
 def index():
@@ -33,6 +47,7 @@ def index():
 
 @app.route('/download', methods=['POST'])
 def download_video():
+    temp_dir = None
     try:
         data = request.get_json()
         url = data.get('url')
@@ -41,43 +56,64 @@ def download_video():
         if not url:
             return jsonify({"error": "URL не передан"}), 400
 
-        # Определяем формат скачивания
+        if not is_allowed_url(url):
+            return jsonify({"error": "❌ Недопустимый источник видео. Поддерживаются только публичные платформы (YouTube, Rutube, VK и др.)."}), 400
+
+        # Выбор формата
         format_selector = 'best[height<=720]' if download_type == 'video' else 'bestaudio/best'
-        
+
+        # Создаём временную папку
+        temp_dir = tempfile.mkdtemp()
+
         ydl_opts = {
             'format': format_selector,
-            'outtmpl': os.path.join(DOWNLOAD_FOLDER, '%(title)s.%(ext)s'),
+            'outtmpl': os.path.join(temp_dir, '%(title)s.%(ext)s'),
+            'quiet': False,
+            'no_warnings': False,
         }
 
-        logger.info(f"Скачивание {download_type}: {url}")
+        logger.info(f"Начало скачивания ({download_type}): {url}")
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
-            title = info.get('title', 'Видео')
-            
-            # Очищаем имя файла
-            sanitized_title = sanitize_filename(title)
-            filepath = os.path.join(DOWNLOAD_FOLDER, f"{sanitized_title}.{info.get('ext', 'mp4')}")
-            
-            # Отправляем файл напрямую клиенту
-            return send_file(filepath, as_attachment=True, download_name=f"{sanitized_title}.mp4")
+            # yt-dlp сам формирует имя файла
+            filename = ydl.prepare_filename(info)
+            filepath = os.path.join(temp_dir, filename)
+
+            if not os.path.exists(filepath):
+                return jsonify({"error": "❌ Файл не был создан. Возможно, видео недоступно."}), 500
+
+            # Подготавливаем безопасное имя для скачивания
+            title = info.get('title', 'video')
+            ext = info.get('ext', 'mp4')
+            safe_title = sanitize_filename(title)
+            download_name = f"{safe_title}.{ext}"
+
+            logger.info(f"Файл готов: {download_name}")
+            return send_file(filepath, as_attachment=True, download_name=download_name)
 
     except yt_dlp.DownloadError as e:
         error_msg = str(e)
-        logger.error(f"Ошибка скачивания: {error_msg}")
-        
-        # Красивая обработка ошибок авторизации
-        if "Sign in" in error_msg or "bot" in error_msg or "authentication" in error_msg.lower():
+        logger.error(f"Ошибка yt-dlp: {error_msg}")
+
+        if any(keyword in error_msg.lower() for keyword in ["sign in", "authentication", "age", "private", "bot"]):
             return jsonify({
-                "error": "❌ Это видео требует авторизации. Пожалуйста, используйте публичные видео без возрастных ограничений."
+                "error": "❌ Это видео требует авторизации или имеет возрастные ограничения. Используйте только публичные видео."
             }), 400
-            
-        return jsonify({"error": f"❌ Ошибка скачивания: {error_msg}"}), 500
-        
+
+        return jsonify({"error": f"❌ Ошибка при скачивании: {error_msg}"}), 500
+
     except Exception as e:
         error_msg = str(e)
         logger.error(f"Неожиданная ошибка: {error_msg}")
-        return jsonify({"error": "❌ Произошла ошибка. Попробуйте другое видео."}), 500
+        return jsonify({"error": "❌ Произошла внутренняя ошибка. Попробуйте другое видео."}), 500
+
+    finally:
+        # Всегда удаляем временную папку
+        if temp_dir and os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            logger.info(f"Временная папка удалена: {temp_dir}")
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    # Запуск только в локальной сети (не публичный сервер без HTTPS и аутентификации!)
+    app.run(host='127.0.0.1', port=5000, debug=False)
